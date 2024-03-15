@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body, html {
+            height: 100%;
+            width: 90%;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        #container {
+            width: 90%;
+            height: 100%;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: space-between; /* 추가: chart와 highestEmotion 사이의 간격 늘리기 */
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        #emotionChart {
+            flex: 1;
+            height: 100%;
+            padding: 10px;
+        }
+        
+        #highestEmotion {
+            width: 50px;
+            margin-right: 30px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            text-align: center;
+        }
+        
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div id="container">
+        <div id="highestEmotion">
+            <div id="highestEmotionEmoji" style="font-size: 70px;"></div>
+            <div id="highestEmotionLabel" style="font-size: 35px; font-weight: bold;"></div>
+            <div id="highestEmotionProb" style="font-size: 25px;"></div>
+        </div>
+        <canvas id="emotionChart"></canvas>
+    </div>
+
+    <script>
+        // Set up the initial chart
+        const emotionChartElement = document.getElementById("emotionChart");
+        const emotionChartCtx = emotionChartElement.getContext("2d");
+
+        const initialData = {
+            labels: ["Angry", "Disgust", "Fear", "Happy", "Sad", "Surprise", "Neutral"],
+            datasets: [{
+                label: 'Emotion Probability',
+                backgroundColor: '#ABE7E1',
+                data: [0, 0, 0, 0, 0, 0, 0],
+            }]
+        };
+        const emotionChart = new Chart(emotionChartCtx, {
+            type: 'bar',
+            data: initialData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                scales: {
+                    x: {
+                        display: true,
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: {
+                            autoSkip: false,
+                            color: 'white',
+                            font: {
+                                size: 20
+                            }
+                        },
+                        title: {
+                            display: false
+                            
+                        },
+                    },
+                    y: {
+                        display: true,
+                        ticks: {
+                            autoSkip: false,
+                            color: 'white',
+                            font: {
+                                size: 20,
+                            }
+                        },
+                        
+                    },
+                    
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                layout: {
+                    padding: 10, // Adjust the padding
+                }
+            }
+        });
+        emotionChart.options.scales.x.grid = {
+            display: false
+        };
+        emotionChart.options.scales.y.grid = {
+            display: false
+        };
+        // Establish an EventSource connection to the server for real-time data
+        const source = new EventSource('/emotion_feed_model');
+        source.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            emotionChart.data.datasets[0].data = data.probabilities;
+            emotionChart.update();
+            
+            // Find the index of the highest probability
+            const highestProbabilityIndex = data.probabilities.indexOf(Math.max(...data.probabilities));
+            const labels = emotionChart.data.labels;
+            const emojis = [ '😡',  '🤢', '😨',  '😄', '😢', '😲','😐']
+
+            // Get the label name and probability percentage
+            const highestEmotionLabel = labels[highestProbabilityIndex];
+            const highestEmotionProbability = data.probabilities[highestProbabilityIndex];
+            const highestEmotionEmoji = emojis[highestProbabilityIndex];
+
+            // Update the highest emotion element
+            const highestEmotionLabelElement = document.getElementById("highestEmotionLabel");
+            highestEmotionLabelElement.innerText = `${highestEmotionLabel}`;
+            const highestEmotionProbElement = document.getElementById("highestEmotionProb");
+            highestEmotionProbElement.innerText = `${highestEmotionProbability.toFixed(2)}%`;
+            const highestEmotionEmojiElement = document.getElementById("highestEmotionEmoji");
+            highestEmotionEmojiElement.innerText = `${highestEmotionEmoji}`;
+};
+    </script>
+</body>
+</html>

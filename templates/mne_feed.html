@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body, html {
+            height: 100%;
+            width: 100%;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        #image-container {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;      
+        }
+        
+        #image {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+    <div id="image-container">
+        <img id="image" src="{{ url_for('mne_feed_model') }}" alt="Streaming Image">
+    </div>
+    </script>
+</body>
+</html>

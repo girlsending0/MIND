@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body, html {
+            height: 100%;
+            width: 100%;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+        }
+        
+        #container {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .canvas-container {
+            width: 80%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .canvas-wrapper {
+            width: 100%;
+            flex-direction: column;
+            height: calc(100vh / 14); /* 창 높이를 plot 수로 나눈 값 */
+            margin: 0;
+            padding: 0;
+        }
+        
+        /* 아래 스타일을 추가해 그리드를 모두 제거합니다. */
+        .canvas-wrapper canvas {
+            border: none;
+        }
+    </style>
+</head>
+<body>
+<div id="container">
+    <div class="canvas-container">
+        {% for i in range(0, 14) %}
+        <div class="canvas-wrapper">
+            <canvas id="canvas{{ i }}"></canvas>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+<!--suppress JSUnresolvedLibraryURL -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.0/jquery.min.js"></script>
+<!--suppress JSUnresolvedLibraryURL -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.3.1/js/bootstrap.min.js"></script>
+<!--suppress JSUnresolvedLibraryURL -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.8.0/Chart.min.js"></script>
+<script>
+    $(document).ready(function () {
+        const getMaxLegendLength = (names) => {
+            return names.reduce((max, name) => Math.max(max, name.length), 0);
+        };
+
+        const createConfig = (channelName, color, maxLegendLength) => {
+            return {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: channelName,
+                        borderColor: color,
+                        borderWidth: 2,
+                        data: [],
+                        fill: false,
+                        pointRadius: 0,
+                    }],
+                },
+                options: {
+                    animation: {
+                        duration: 0,
+                        delay : 0,
+                        easing: 'linear'
+                    },
+                    interaction: {
+                    intersect: false
+                    },
+                    
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    hover: {
+                        mode: 'nearest',
+                        intersect: false
+                    },
+                    title: {
+                        display: false
+                    },
+                    legend: {
+                        display: true,
+                        position: 'left',
+                        labels: {
+                            fontColor: color,
+                            fontSize: 19,
+                            boxWidth: 0,
+                        }
+                    },
+                    scales: {
+                        xAxes: [{
+                            display: false,
+                            ticks: {
+                                display: false
+                            },
+                            gridLines: {
+                                display: false
+                            }
+                        }],
+                        yAxes: [{
+                            display: false,
+                            ticks: {
+                                //min:4000,
+                                //max:4300,
+                                display: false
+                            },
+                            gridLines: {
+                                display: false
+                            }
+                        }]
+                    },
+                    tooltips: {
+                        enabled: false
+                    }
+                }
+            };
+        };
+
+        const lineCharts = [];
+        const channelNames = ['AF3', 'F7', 'F3', 'FC5', 'T7', 'P7', 'O1', 'O2', 'P8', 'T8', 'FC6', 'F4', 'F8', 'AF4'];
+        const colors = ['#FF00FF', '#FF9900', '#FFFF00', '#BAFF1A', '#00FF80', '#00FFFF', '#8000FF', '#FFCCFF', '#FFD700', '#C71585', '#8A2BE2', '#32CD32', '#00FA9A', '#1E90FF'];
+        const maxLegendLength = getMaxLegendLength(channelNames);
+
+        const queueSize = 128; // 큐의 최대 크기
+        const dataQueue = new Array(queueSize).fill(null).map(() => ({
+            time: null,
+            value: Array(channelNames.length).fill(null)
+        }));
+
+        for (let i = 0; i < channelNames.length; i++) {
+            const canvasId = `canvas${i}`;
+            const canvas = document.getElementById(canvasId).getContext('2d');
+            const lineChart = new Chart(canvas, createConfig(channelNames[i], colors[i], maxLegendLength));
+            lineCharts.push(lineChart);
+        }
+
+        const source = new EventSource("/eeg_feed_model"); 
+        source.onmessage = function (event) {
+            const data = JSON.parse(event.data);
+
+            const newDataPoint = {
+                time: data.time,
+                value: data.value
+            };
+
+            dataQueue.shift();
+            dataQueue.push(newDataPoint);
+
+            lineCharts.forEach((chart, index) => {
+                const chartData = chart.data;
+                chartData.labels = dataQueue.map(item => item.time).filter(time => time !== null);
+                chartData.datasets[0].data = dataQueue.map(item => item.value[index]).filter(value => value !== null);
+                chart.update();
+            });
+
+            };
+        });
+</script>
+</body>
+</html>

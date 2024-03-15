@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body, html {
+            height: 100%;
+            width: 100%;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        #container {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        #attentionChart {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/chart.js@2.8.0/dist/Chart.bundle.js"></script>
+    <script src="https://unpkg.com/chartjs-gauge@0.3.0/dist/chartjs-gauge.js"></script>
+    <script src="https://unpkg.com/chartjs-plugin-datalabels@0.7.0/dist/chartjs-plugin-datalabels.js"></script>
+</head>
+<body>
+    <div id="container">
+        <canvas id="attentionChart" ></canvas>
+    </div>
+
+    <script>
+        const attentionChartElement = document.getElementById("attentionChart");
+        const attentionChartCtx = attentionChartElement.getContext("2d");
+
+        const eventSource = new EventSource("/attention_feed_model");
+        const attentionChart = new Chart(attentionChartCtx, {
+            type: "gauge",
+            data: {
+                labels: ["Drowsy", "Unfocus", "Focus"],
+                datasets: [{
+                    label: "Attention Status",
+                    data: [2, 4, 6], // Initial data values
+                    value: 3,
+                    borderWidth: 0,
+                    backgroundColor:  ["#FF87AB", "#FFD700", "#66FF66"],
+                    borderWidth: 1
+                    
+                }]
+            },
+            options: {
+                responsive: true,
+                needle: {
+                    // Needle circle radius as the percentage of the chart area width
+                    radiusPercentage: 1,
+                    // Needle width as the percentage of the chart area width
+                    widthPercentage: 2.0,
+                    // Needle length as the percentage of the interval between inner radius (0%) and outer radius (100%) of the arc
+                    lengthPercentage: 30,
+                    // The color of the needle
+                    color: 'white',
+                },
+                valueLabel: {
+                    display: false,
+                },
+                plugins: {
+                    datalabels: {
+                        display: true,
+                        formatter: function(value, context) {
+                            return context.chart.data.labels[context.dataIndex];
+                        },
+                        font: {
+                            size: 25,
+                            weight: 'bold',
+                            color: 'black'
+                        },
+                        color: 'black',
+                        backgroundColor: null,
+                        anchor: 'center',
+                        align: 'center',
+                        padding: {
+                            top: 10,
+                            bottom: 2,
+                            left: 10,
+                            right: 10
+                        },
+                        offset: 10, // Adjust the offset to position the labels better
+                    }
+                }
+            }
+        });
+
+        eventSource.onmessage = function(event) {
+            const attentionValue = event.data;
+            let attentionState;
+
+            if (attentionValue === "0") {
+                attentionState = "Focus";
+                attentionChart.data.datasets[0].value = 5;
+            } else if (attentionValue === "1") {
+                attentionState = "Unfocus";
+                attentionChart.data.datasets[0].value = 3;
+            } else if (attentionValue === "2") {
+                attentionState = "Drowsy";
+                attentionChart.data.datasets[0].value = 1;
+            } else {
+                attentionState = "Unknown";
+            }
+
+            attentionChart.update(); // Update the chart
+        };
+
+        eventSource.onerror = function(event) {
+            console.error("EventSource failed:", event);
+            eventSource.close();
+        };
+    </script>
+</body>
+</html>
